@@ -1,5 +1,5 @@
 import pandas as pd
-import polars as pl
+# import polars as pl
 
 
 def prep_target_visit_features(targets_df, visits_df):
@@ -88,16 +88,30 @@ def prep_target_visit_features(targets_df, visits_df):
         ["key", "join_time"], ascending=[True, True]
     ).reset_index(drop=True)
 
-    targets_df = pl.from_pandas(targets_df)
-    visits_df = pl.from_pandas(visits_df)
+    # Ensure both are sorted by 'key' and 'join_time' (required for merge_asof)
+    targets_df = targets_df.sort_values(by=["key", "join_time"])
+    visits_df = visits_df.sort_values(by=["key", "join_time"])
 
-    targets_df = targets_df.join_asof(
+    # Perform the as-of merge
+    targets_df = pd.merge_asof(
+        targets_df,
         visits_df,
-        left_on="join_time",
-        right_on="join_time",
-        by="key",  # join by group
-        strategy="backward",  # or 'forward' or 'nearest'
-    ).to_pandas()
+        on="join_time",
+        by="key",
+        direction="backward",  # can be 'forward' or 'nearest' if desired
+    )
+
+
+    # targets_df = pl.from_pandas(targets_df)
+    # visits_df = pl.from_pandas(visits_df)
+
+    # targets_df = targets_df.join_asof(
+    #     visits_df,
+    #     left_on="join_time",
+    #     right_on="join_time",
+    #     by="key",  # join by group
+    #     strategy="backward",  # or 'forward' or 'nearest'
+    # ).to_pandas()
 
     ## Lateness metrics
     # first, clean up visitdiff. if visitdiff is less than 0, then set to 0.
@@ -199,16 +213,34 @@ def prep_target_pharmacy_features(targets_df, pharmacy_df):
         ["key", "visitdate"], ascending=[True, True]
     ).reset_index(drop=True)
 
-    targets_df = pl.from_pandas(targets_df)
-    pharmacy_df = pl.from_pandas(pharmacy_df)
+    # Make sure the join column is datetime
+    targets_df["visitdate"] = pd.to_datetime(targets_df["visitdate"])
+    pharmacy_df["visitdate"] = pd.to_datetime(pharmacy_df["visitdate"])
 
-    targets_df = targets_df.join_asof(
+    # Sort both DataFrames by key and join column
+    targets_df = targets_df.sort_values(["key", "visitdate"])
+    pharmacy_df = pharmacy_df.sort_values(["key", "visitdate"])
+
+    # Perform as-of merge (same semantics as Polars join_asof)
+    targets_df = pd.merge_asof(
+        targets_df,
         pharmacy_df,
-        left_on="visitdate",
-        right_on="visitdate",
-        by="key",  # join by group
-        strategy="backward",  # or 'forward' or 'nearest'
-    ).to_pandas()
+        on="visitdate",
+        by="key",
+        direction="backward",  # same as strategy="backward"
+    )
+
+
+    # targets_df = pl.from_pandas(targets_df)
+    # pharmacy_df = pl.from_pandas(pharmacy_df)
+
+    # targets_df = targets_df.join_asof(
+    #     pharmacy_df,
+    #     left_on="visitdate",
+    #     right_on="visitdate",
+    #     by="key",  # join by group
+    #     strategy="backward",  # or 'forward' or 'nearest'
+    # ).to_pandas()
 
     return targets_df
 
@@ -252,31 +284,50 @@ def prep_target_lab_features(targets_df, lab_df):
         ["key", "orderedbydate"], ascending=[True, True]
     ).reset_index(drop=True)
 
-    targets_df = pl.from_pandas(targets_df)
-    vl_df = pl.from_pandas(vl_df)
-
     targets_df = (
-        targets_df.join_asof(
-            vl_df,
+        pd.merge_asof(
+            targets_df.sort_values(["key", "visitdate"]),
+            vl_df.sort_values(["key", "orderedbydate"]),
             left_on="visitdate",
             right_on="orderedbydate",
             by="key",
-            strategy="backward",
+            direction="backward"
         )
-        .with_columns(
-            (pl.col("visitdate") - pl.col("orderedbydate"))
-            .dt.total_days()
-            .alias("days_diff")
+        .assign(
+            days_diff=lambda d: (d["visitdate"] - d["orderedbydate"]).dt.days,
+            most_recent_vl=lambda d: d["vl"].where(
+                (d["days_diff"] <= 365) & (d["days_diff"] >= 0)
+            )
         )
-        .with_columns(
-            pl.when((pl.col("days_diff") > 365) | (pl.col("days_diff") < 0))
-            .then(None)
-            .otherwise(pl.col("vl"))
-            .alias("most_recent_vl")
-        )
-        .drop("days_diff", "orderedbydate", "vl")
-        .to_pandas()
+        .drop(columns=["days_diff", "orderedbydate", "vl"])
     )
+
+
+    # targets_df = pl.from_pandas(targets_df)
+    # vl_df = pl.from_pandas(vl_df)
+
+    # targets_df = (
+    #     targets_df.join_asof(
+    #         vl_df,
+    #         left_on="visitdate",
+    #         right_on="orderedbydate",
+    #         by="key",
+    #         strategy="backward",
+    #     )
+    #     .with_columns(
+    #         (pl.col("visitdate") - pl.col("orderedbydate"))
+    #         .dt.total_days()
+    #         .alias("days_diff")
+    #     )
+    #     .with_columns(
+    #         pl.when((pl.col("days_diff") > 365) | (pl.col("days_diff") < 0))
+    #         .then(None)
+    #         .otherwise(pl.col("vl"))
+    #         .alias("most_recent_vl")
+    #     )
+    #     .drop("days_diff", "orderedbydate", "vl")
+    #     .to_pandas()
+    # )
 
     # where most_recent_vl is None, if timeonart is less than 6 months,
     # then set to "earlyart". Otherwise, if most_recent_vl is none,
@@ -314,31 +365,64 @@ def prep_target_lab_features(targets_df, lab_df):
     cd4_df = cd4_df.sort_values(
         ["key", "orderedbydate"], ascending=[True, True]
     ).reset_index(drop=True)
-    targets_df = pl.from_pandas(targets_df)
-    cd4_df = pl.from_pandas(cd4_df)
 
-    targets_df = (
-        targets_df.join_asof(
-            cd4_df,
-            left_on="visitdate",
-            right_on="orderedbydate",
-            by="key",  # join by group
-            strategy="backward",  # or 'forward' or 'nearest'
-        )
-        .with_columns(
-            (pl.col("visitdate") - pl.col("orderedbydate"))
-            .dt.total_days()
-            .alias("days_diff")
-        )
-        .with_columns(
-            pl.when((pl.col("days_diff") > 365) | (pl.col("days_diff") < 0))
-            .then(None)
-            .otherwise(pl.col("cd4"))
-            .alias("most_recent_cd4")
-        )
-        .drop("days_diff", "orderedbydate")
-        .to_pandas()
+    # --- Ensure datetime dtypes ---
+    targets_df["visitdate"] = pd.to_datetime(targets_df["visitdate"])
+    cd4_df["orderedbydate"] = pd.to_datetime(cd4_df["orderedbydate"])
+
+    # --- Required sorting for merge_asof (Polars sorts internally) ---
+    targets_df = targets_df.sort_values(["key", "visitdate"])
+    cd4_df = cd4_df.sort_values(["key", "orderedbydate"])
+
+    # --- As-of join: most recent cd4 record with orderedbydate <= visitdate within each key ---
+    targets_df = pd.merge_asof(
+        targets_df,
+        cd4_df,
+        left_on="visitdate",
+        right_on="orderedbydate",
+        by="key",
+        direction="backward",
     )
+
+    # --- days_diff in days (visitdate - orderedbydate) ---
+    targets_df["days_diff"] = (targets_df["visitdate"] - targets_df["orderedbydate"]).dt.days
+
+    # --- most_recent_cd4: None if days_diff > 365 or < 0; else use cd4 ---
+    # (Behavior matches: pl.when((days_diff > 365) | (days_diff < 0)).then(None).otherwise(cd4))
+    targets_df["most_recent_cd4"] = targets_df["cd4"]
+    mask_invalid = (targets_df["days_diff"] > 365) | (targets_df["days_diff"] < 0)
+    targets_df.loc[mask_invalid, "most_recent_cd4"] = None
+
+    # --- Drop only the same columns Polars dropped ---
+    targets_df = targets_df.drop(columns=["days_diff", "orderedbydate"])
+
+
+
+    # targets_df = pl.from_pandas(targets_df)
+    # cd4_df = pl.from_pandas(cd4_df)
+
+    # targets_df = (
+    #     targets_df.join_asof(
+    #         cd4_df,
+    #         left_on="visitdate",
+    #         right_on="orderedbydate",
+    #         by="key",  # join by group
+    #         strategy="backward",  # or 'forward' or 'nearest'
+    #     )
+    #     .with_columns(
+    #         (pl.col("visitdate") - pl.col("orderedbydate"))
+    #         .dt.total_days()
+    #         .alias("days_diff")
+    #     )
+    #     .with_columns(
+    #         pl.when((pl.col("days_diff") > 365) | (pl.col("days_diff") < 0))
+    #         .then(None)
+    #         .otherwise(pl.col("cd4"))
+    #         .alias("most_recent_cd4")
+    #     )
+    #     .drop("days_diff", "orderedbydate")
+    #     .to_pandas()
+    # )
 
     # finally, create a variable called ahd.
     # if age is less than 5 or cd4 is "YesAHD" or whostage is 3 or 4, then ahd = 1

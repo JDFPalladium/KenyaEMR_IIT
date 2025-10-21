@@ -7,10 +7,11 @@ ENV PYTHONPATH=/app
 # Copy only inference-related files
 COPY pipelines /app/pipelines/
 COPY models/feature_order.pkl /app/models/feature_order.pkl
-COPY models/mod_latest.json /app/models/mod_latest.json
 COPY models/ohe_latest.pkl /app/models/ohe_latest.pkl
-COPY models/thresholds_latest.pkl /app/models/thresholds_latest.pkl
-COPY src /app/src/
+COPY models/site_thresholds_latest.pkl /app/models/site_thresholds_latest.pkl
+COPY models/mod_latest.so /app/models/mod_latest.so
+COPY src/common /app/src/common/
+COPY src/inference /app/src/inference/
 COPY data /app/data/
 COPY requirements-inference.txt /app/
 
@@ -21,4 +22,3 @@ RUN pip install --no-cache-dir -r requirements-inference.txt
 # Set the entrypoint (adjust as needed)
 CMD ["uvicorn", "src.inference.api:app", "--host", "0.0.0.0", "--port", "8000"]
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-

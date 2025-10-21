@@ -1,11 +1,11 @@
-import xgboost as xgb
-from sklearn.preprocessing import OneHotEncoder
 from datetime import datetime
 import random
 import io
 import os
 import pandas as pd
 import pickle
+import tl2cgen
+import numpy as np
 from src.common.feature_dtypes import expected_dtypes
 
 
@@ -102,26 +102,41 @@ def gen_inference(df, sitecode):
         print(f"❌ Feature mismatch: some expected columns are missing: {e}")
         return {"pred_out": None, "pred_cat": "unavailable"}
 
-    # convert to xgb.Dmatrix
-    xgb_df = xgb.DMatrix(data=final_df.drop(columns=["iit"]), label=final_df["iit"])
+    # --- new (TL2cgen inference) ---
+    features = final_df.drop(columns=["iit"]).astype(np.float32)
+    tl_model_path = "models/mod_latest.so"
 
-    # load model
-    model = "models/mod_latest.json"
-    # Check if the model file exists
-    if not os.path.exists(model):
-        raise FileNotFoundError(
-            f"Model file {model} not found. Please train the model first."
-        )
-    bst = xgb.Booster()
-    bst.load_model(model)
+    # Load the compiled predictor once (optional: cache globally)
+    predictor = tl2cgen.Predictor(tl_model_path)
 
-    # make prediction
-    try:
-        preds = bst.predict(xgb_df)
-        pred_out = preds[0].item()
-    except Exception as e:
-        print(f"❌ Prediction failed: {e}")
-        return {"pred_out": None, "pred_cat": "unavailable"}
+    # Predict probabilities (pred_margin=False ensures sigmoid applied)
+    preds = predictor.predict(
+        tl2cgen.DMatrix(features.values),
+        pred_margin=False
+    )
+
+    pred_out = float(preds[0])  # extract scalar
+
+    # # convert to xgb.Dmatrix
+    # xgb_df = xgb.DMatrix(data=final_df.drop(columns=["iit"]), label=final_df["iit"])
+
+    # # load model
+    # model = "models/mod_latest.json"
+    # # Check if the model file exists
+    # if not os.path.exists(model):
+    #     raise FileNotFoundError(
+    #         f"Model file {model} not found. Please train the model first."
+    #     )
+    # bst = xgb.Booster()
+    # bst.load_model(model)
+
+    # # make prediction
+    # try:
+    #     preds = bst.predict(xgb_df)
+    #     pred_out = preds[0].item()
+    # except Exception as e:
+    #     print(f"❌ Prediction failed: {e}")
+    #     return {"pred_out": None, "pred_cat": "unavailable"}
 
     # load thresholds from models/thresholds.pkl
     thresholds_file = "models/site_thresholds_latest.pkl"
