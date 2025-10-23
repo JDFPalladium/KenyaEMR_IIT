@@ -1,6 +1,7 @@
 import xgboost as xgb
-from sklearn.preprocessing import OneHotEncoder
+# from sklearn.preprocessing import OneHotEncoder
 from datetime import datetime
+import json
 import random
 import boto3
 import io
@@ -102,15 +103,31 @@ def refresh_model(pipeline=False, targets_df=None, targets_aws=None, refresh_dat
         if c not in ("sitecode", "iit")
     ]
 
-    ohe = OneHotEncoder(drop="first", handle_unknown="ignore")
-    ohe.fit(df[categorical_columns])
-
-    # Save the fitted encoder
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    with open(f"models/ohe_{timestamp}.pkl", "wb") as f:
-        pickle.dump(ohe, f)
-    # Save the refreshed encoder as latest to be used in inference
-    shutil.copyfile(f"models/ohe_{timestamp}.pkl", "models/ohe_latest.pkl")
+
+    # Build and save category map (replicates OneHotEncoder behavior)
+    category_map = {}
+    for col in categorical_columns:
+        cats = df[col].dropna().unique().tolist()
+        # preserve order of appearance, drop first (like drop="first")
+        if len(cats) > 1:
+            cats = cats[1:]
+        category_map[col] = cats
+
+    with open(f"models/ohe_{timestamp}.json", "w") as f:
+        json.dump(category_map, f, indent=2)
+    shutil.copyfile(f"models/ohe_{timestamp}.json", "models/ohe_latest.json")
+
+
+    # ohe = OneHotEncoder(drop="first", handle_unknown="ignore")
+    # ohe.fit(df[categorical_columns])
+
+    # # Save the fitted encoder
+    # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # with open(f"models/ohe_{timestamp}.pkl", "wb") as f:
+    #     pickle.dump(ohe, f)
+    # # Save the refreshed encoder as latest to be used in inference
+    # shutil.copyfile(f"models/ohe_{timestamp}.pkl", "models/ohe_latest.pkl")
 
     def encode_xgboost(df, start_date, end_date, save_feature_order):
 
@@ -125,14 +142,33 @@ def refresh_model(pipeline=False, targets_df=None, targets_aws=None, refresh_dat
         # drop non-feature cols before encoding
         df_slice = df_slice.drop(columns=["nad", "sitecode"])
 
-        # one-hot encode categorical cols (may be empty)
         if categorical_columns:
-            encoded = ohe.transform(df_slice[categorical_columns]).toarray()
-            encoded_cols = ohe.get_feature_names_out(categorical_columns)
-            enc_df = pd.DataFrame(encoded, columns=encoded_cols, index=df_slice.index)
+            # Load category map
+            with open("models/ohe_latest.json") as f:
+                category_map = json.load(f)
+
+            encoded_parts = []
+            for col, cats in category_map.items():
+                for cat in cats:
+                    encoded_parts.append((f"{col}_{cat}", (df_slice[col] == cat).astype(int)))
+
+            enc_df = pd.concat(
+                [series.rename(name) for name, series in encoded_parts],
+                axis=1
+            )
             final_df = pd.concat([df_slice.drop(columns=categorical_columns), enc_df], axis=1)
         else:
             final_df = df_slice
+
+
+        # # one-hot encode categorical cols (may be empty)
+        # if categorical_columns:
+        #     encoded = ohe.transform(df_slice[categorical_columns]).toarray()
+        #     encoded_cols = ohe.get_feature_names_out(categorical_columns)
+        #     enc_df = pd.DataFrame(encoded, columns=encoded_cols, index=df_slice.index)
+        #     final_df = pd.concat([df_slice.drop(columns=categorical_columns), enc_df], axis=1)
+        # else:
+        #     final_df = df_slice
 
         feature_order = list(final_df.columns)
         if save_feature_order:

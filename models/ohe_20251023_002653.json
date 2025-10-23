@@ -1,0 +1,75 @@
+{
+  "cascadestatus": [
+    "neverdisengaged",
+    "shorttermrestart"
+  ],
+  "visitby": [
+    "self",
+    "refill visit documentation",
+    "other"
+  ],
+  "tcareason": [
+    "pharmacy refill",
+    "lab tests",
+    "counseling",
+    "other"
+  ],
+  "differentiatedcare": [
+    "standard care",
+    "facility art distribution group",
+    "community art distribution"
+  ],
+  "maritalstatus": [
+    "married",
+    "minor",
+    "widowed",
+    "divorced",
+    "polygamous"
+  ],
+  "educationlevel": [
+    "college",
+    "primary",
+    "none"
+  ],
+  "occupation": [
+    "trader",
+    "other",
+    "farmer",
+    "student",
+    "employee",
+    "driver"
+  ],
+  "bmi": [
+    "Normalweight",
+    "Underweight",
+    "Under15",
+    "Obese"
+  ],
+  "most_recent_vl": [
+    "novalidvl",
+    "nonsuppressed",
+    "earlyart",
+    "restart"
+  ],
+  "kephlevel": [
+    "Level 6",
+    "Level 3",
+    "Level 2",
+    "Level 5"
+  ],
+  "facilitytypecategory": [
+    "HEALTH CENTRE",
+    "DISPENSARY",
+    "MEDICAL CLINIC",
+    "STAND ALONE",
+    "None",
+    "MEDICAL CENTER",
+    "NURSING HOME",
+    ""
+  ],
+  "ownertype": [
+    "Ministry of Health",
+    "Faith Based Organization",
+    "Private Practice"
+  ]
+}
