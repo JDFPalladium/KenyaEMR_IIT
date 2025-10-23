@@ -2,8 +2,8 @@ from pathlib import Path
 import treelite
 import tl2cgen
 
-MODEL_JSON = Path("models/mod_latest.json")   # your existing XGBoost JSON
-OUT_LIB    = Path("models/mod_latest.so")     # .dll on Windows, .dylib on macOS
+MODEL_JSON = Path("data/mod_latest.json")   # your existing XGBoost JSON
+OUT_LIB    = Path("data/mod_latest.so")     # .dll on Windows, .dylib on macOS
 
 # 1) Load XGBoost model into Treelite
 #    (Treelite 4.x is the model exchange/serialization layer)

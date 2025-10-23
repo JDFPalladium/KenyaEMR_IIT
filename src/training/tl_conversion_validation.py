@@ -4,9 +4,9 @@ import xgboost as xgb
 import tl2cgen
 import pickle
 
-XGB_MODEL_PATH = "models/mod_latest.json"
-TL2_MODEL_PATH = "models/mod_latest.so"
-FEATURE_ORDER_PATH = "models/feature_order.pkl"
+XGB_MODEL_PATH = "data/mod_latest.json"
+TL2_MODEL_PATH = "data/mod_latest.so"
+FEATURE_ORDER_PATH = "data/feature_order.pkl"
 
 with open(FEATURE_ORDER_PATH, "rb") as f:
     feature_order = pickle.load(f)
