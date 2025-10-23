@@ -6,13 +6,9 @@ ENV PYTHONPATH=/app
 
 # Copy only inference-related files
 COPY pipelines /app/pipelines/
-COPY models/feature_order.pkl /app/models/feature_order.pkl
-COPY models/ohe_latest.pkl /app/models/ohe_latest.pkl
-COPY models/site_thresholds_latest.pkl /app/models/site_thresholds_latest.pkl
-COPY models/mod_latest.so /app/models/mod_latest.so
+COPY data /app/data/
 COPY src/common /app/src/common/
 COPY src/inference /app/src/inference/
-COPY data /app/data/
 COPY requirements-inference.txt /app/
 
 # Install only the dependencies needed for inference
