@@ -162,9 +162,16 @@ def gen_inference(df, sitecode):
     # if lateness_last5 is greater than 0, return lateness_last5,
     # if most_recent_vl is "unsuppressed", return "unsuppressed",
     if pred_cat in ["high", "medium"]:
+        # Convert NaN values to None for JSON serialization
+        lateness_value = final_df["lateness_last5"].iloc[0]
+        lateness_value = None if pd.isna(lateness_value) else lateness_value
+        
+        timeonart_value = final_df["timeonart"].iloc[0]
+        timeonart_value = None if pd.isna(timeonart_value) else timeonart_value
+        
         risk_factors = {
-            "avg_days_late_last5visits": final_df["lateness_last5"].iloc[0],
-            "months_on_art": final_df["timeonart"].iloc[0],
+            "avg_days_late_last5visits": lateness_value,
+            "months_on_art": timeonart_value,
             "most_recent_viralload": df["most_recent_vl"].iloc[0],
             # if adherence is 1, then return "good", if 0, return "poor", otherwise None
             "adherence": "good" if final_df["adherence"].iloc[0] == 1 else "poor" if final_df["adherence"].iloc[0] == 0 else None,
