@@ -50,7 +50,7 @@ def rtc_gen_inference(df, sitecode):
 
     # load encoder which is called ohe_latest.pkl
     # from the models directory
-    encoder = "data/rtc_ohe_latest.pkl"
+    encoder = "data/models/rtc_ohe_latest.pkl"
     # Check if the encoder file exists
     if not os.path.exists(encoder):
         raise FileNotFoundError(
@@ -83,7 +83,7 @@ def rtc_gen_inference(df, sitecode):
     final_df = pd.concat([df.drop(columns=categorical_columns), encoded_df], axis=1)
 
     # make sure the columns are in the right order
-    with open("data/rtc_feature_order.pkl", "rb") as f:
+    with open("data/models/rtc_feature_order.pkl", "rb") as f:
         feature_order = pickle.load(f)
     try:
         final_df = final_df[feature_order]
@@ -93,7 +93,7 @@ def rtc_gen_inference(df, sitecode):
 
     # --- new (TL2cgen inference) ---
     features = final_df.astype(np.float32)
-    tl_model_path = "data/rtc_mod_latest.so"
+    tl_model_path = "data/models/rtc_mod_latest.so"
 
     # Load the compiled predictor once (optional: cache globally)
     predictor = tl2cgen.Predictor(tl_model_path)
@@ -108,7 +108,7 @@ def rtc_gen_inference(df, sitecode):
 
 
     # load thresholds from models/thresholds.pkl
-    thresholds_file = "data/rtc_thresholds_latest.pkl"
+    thresholds_file = "data/models/rtc_thresholds_latest.pkl"
     if not os.path.exists(thresholds_file):
         raise FileNotFoundError(
             f"Thresholds file {thresholds_file} not found. Please train the model first."
