@@ -41,8 +41,8 @@ def rtc_refresh_model(pipeline=False, targets_df=None, targets_aws=None, refresh
 
     # make sure nad is a datetime
     df["nad"] = pd.to_datetime(df["nad"], errors="coerce")
-    # keep rows where dayslate is not None or nad is before December 31, 2024 or dayslate is more than  0
-    df = df[df["dayslate"].notna() & (df["dayslate"] > 0) & (df["nad"] < "2024-12-31")]
+    # keep rows where dayslate is not None or dayslate is more than  0
+    df = df[df["dayslate"].notna() & (df["dayslate"] > 0)]
 
     # create target, if dayslate is less than 120, then 1, else 0
     df['target'] = np.where(df['dayslate'] <= 90, 0, 1)
@@ -55,9 +55,6 @@ def rtc_refresh_model(pipeline=False, targets_df=None, targets_aws=None, refresh
     after = refresh_date - pd.DateOffset(months=6)
     before = refresh_date
     df = df[(df["nad"] >= after) & (df["nad"] <= before)]
-    
-    print(df.shape)
-    print(df.columns)
 
     # get each patientpkhash and sitecode and save to file
     df = df.drop(
@@ -162,13 +159,13 @@ def rtc_refresh_model(pipeline=False, targets_df=None, targets_aws=None, refresh
         df, start_date=refresh_date - pd.DateOffset(months=1), end_date=refresh_date, save_feature_order=False
     )
 
+    print(dtrain.num_row(), dval.num_row())
+
     params = {
         "eta": 0.01,
         "max_depth": 6,
         "subsample": 0.5,
-        "colsample_bytree": 0.6,
-        "lambda": 1,
-        "scale_pos_weight": 10,
+        "colsample_bytree": 0.5,
         "objective": "binary:logistic",
         "eval_metric": "aucpr",
     }
@@ -226,5 +223,5 @@ if __name__ == "__main__":
     rtc_refresh_model(
         pipeline=False,
         targets_aws="rtc1001.parquet",
-        refresh_date="2024-09-30"
+        refresh_date="2023-12-31"
     )

@@ -32,4 +32,4 @@ if __name__ == "__main__":
     run_rtc_inference_pipeline(ppk = "7E14A8034F39478149EE6A4CA37A247C631D17907C746BE0336D3D7CEC68F66F",
                            sc = "13074",
                             start_date = "2021-01-01",
-                            end_date = "2025-01-15")
+                            end_date = "2028-01-15")
